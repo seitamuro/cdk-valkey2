@@ -1,8 +1,8 @@
 import * as cdk from "aws-cdk-lib";
+import * as apigw from "aws-cdk-lib/aws-apigateway";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as elasticache from "aws-cdk-lib/aws-elasticache";
 import * as iam from "aws-cdk-lib/aws-iam";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
@@ -86,12 +86,13 @@ export class CdkValkeyStack extends cdk.Stack {
         ],
       })
     );
-    const getFunctionUrl = getFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-    });
 
-    new cdk.CfnOutput(this, "GetFunctionUrl", {
-      value: getFunctionUrl.url,
+    const api = new apigw.RestApi(this, "Api");
+    const valkeyResource = api.root.addResource("valkey");
+    valkeyResource.addMethod("GET", new apigw.LambdaIntegration(getFunction));
+
+    new cdk.CfnOutput(this, "ApiEndpoint", {
+      value: api.url,
     });
   }
 }
