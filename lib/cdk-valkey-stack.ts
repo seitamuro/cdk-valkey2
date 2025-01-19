@@ -1,6 +1,10 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as elasticache from "aws-cdk-lib/aws-elasticache";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
@@ -62,5 +66,32 @@ export class CdkValkeyStack extends cdk.Stack {
         transitEncryptionEnabled: true,
       }
     );
+
+    const getFunction = new NodejsFunction(this, "GetFunction", {
+      entry: "lambda/get.ts",
+      runtime: Runtime.NODEJS_22_X,
+      handler: "handler",
+      vpc: vpc,
+      environment: {
+        VALKEY_HOST: cluster.attrPrimaryEndPointAddress,
+      },
+    });
+    getFunction.role?.addManagedPolicy(
+      new iam.ManagedPolicy(this, "GetFunctionElasticachePolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            actions: ["elasticache:*"],
+            resources: ["*"],
+          }),
+        ],
+      })
+    );
+    const getFunctionUrl = getFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+    });
+
+    new cdk.CfnOutput(this, "GetFunctionUrl", {
+      value: getFunctionUrl.url,
+    });
   }
 }
