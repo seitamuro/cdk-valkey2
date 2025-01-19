@@ -86,10 +86,30 @@ export class CdkValkeyStack extends cdk.Stack {
         ],
       })
     );
+    const postFunction = new NodejsFunction(this, "PostFunction", {
+      entry: "lambda/post.ts",
+      runtime: Runtime.NODEJS_22_X,
+      handler: "handler",
+      vpc: vpc,
+      environment: {
+        VALKEY_HOST: cluster.attrPrimaryEndPointAddress,
+      },
+    });
+    postFunction.role?.addManagedPolicy(
+      new iam.ManagedPolicy(this, "PostFunctionElasticachePolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            actions: ["elasticache:*"],
+            resources: ["*"],
+          }),
+        ],
+      })
+    );
 
     const api = new apigw.RestApi(this, "Api");
     const valkeyResource = api.root.addResource("valkey");
     valkeyResource.addMethod("GET", new apigw.LambdaIntegration(getFunction));
+    valkeyResource.addMethod("POST", new apigw.LambdaIntegration(postFunction));
 
     new cdk.CfnOutput(this, "ApiEndpoint", {
       value: api.url,
