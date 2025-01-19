@@ -1,3 +1,4 @@
+import { APIGatewayProxyEvent } from "aws-lambda";
 import { Redis } from "iovalkey";
 
 const valkey = new Redis({
@@ -10,8 +11,15 @@ const valkey = new Redis({
   },
 });
 
-export const handler = async (event: any) => {
-  const value = await valkey.get("test-key");
+export const handler = async (event: APIGatewayProxyEvent) => {
+  if (!event.queryStringParameters?.key) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Missing key" }),
+    };
+  }
+
+  const value = await valkey.get(event.queryStringParameters.key!);
   return {
     statusCode: 200,
     body: JSON.stringify(value),
